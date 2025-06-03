@@ -4,11 +4,10 @@ Progetto Basi di Dati 2
 """
 
 import json
-import re
-from datetime import datetime
 from typing import Dict, List, Optional, Any
-from pymongo import MongoClient
-from dataclasses import dataclass, asdict
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+from dataclasses import dataclass, field
 import uuid
 
 # Modelli dati FHIR
@@ -47,15 +46,15 @@ class FHIRContact:
 class FHIRPatient:
     resourceType: str = "Patient"
     id: str = ""
-    meta: Dict = None
-    identifier: List[FHIRIdentifier] = None
-    name: List[FHIRName] = None
-    telecom: List[FHIRTelecom] = None
+    meta: Dict = field(default_factory=dict)
+    identifier: List[FHIRIdentifier] = field(default_factory=list)
+    name: List[FHIRName] = field(default_factory=list)
+    telecom: List[FHIRTelecom] = field(default_factory=list)
     gender: str = ""
     birthDate: str = ""
-    address: List[FHIRAddress] = None
-    contact: List[FHIRContact] = None
-    extension: List[Dict] = None
+    address: List[FHIRAddress] = field(default_factory=list)
+    contact: List[FHIRContact] = field(default_factory=list)
+    extension: List[Dict] = field(default_factory=list)
 
 class HL7Parser:
     """Parser per messaggi HL7 v2.5"""
@@ -120,12 +119,9 @@ class FHIRConverter:
         if 'PID' in segments:
             pid_segment = self.parser.parse_segment(segments['PID'][0])
             patient = self._process_pid_segment(patient, pid_segment)
-        
-        # Processa altri segmenti se necessario
-        if 'OBR' in segments:
-            # Potresti voler aggiungere informazioni sui test di laboratorio
-            pass
-        
+        else:
+            raise ValueError("Messaggio HL7 senza segmento PID: impossibile estrarre dati paziente.")
+        # Gli altri segmenti (OBR, OBX, TXA, ecc.) sono ignorati per ora
         return patient
     
     def _process_pid_segment(self, patient: FHIRPatient, pid_fields: List[str]) -> FHIRPatient:
@@ -260,11 +256,40 @@ class FHIRConverter:
         }
         return gender_map.get(hl7_gender.upper(), 'unknown')
 
+class FHIRObservation:
+    def __init__(self, patient_id, obx_fields, obr_fields=None):
+        self.resourceType = "Observation"
+        self.subject = {"reference": f"Patient/{patient_id}"}
+        self.status = "final"
+        self.code = {}
+        self.value = None
+        self.unit = None
+        self.referenceRange = None
+        self.issued = None
+        # OBR: info esame
+        if obr_fields and len(obr_fields) > 4:
+            code_comp = obr_fields[4].split("^")
+            if len(code_comp) > 1:
+                self.code = {"coding": [{"code": code_comp[0], "display": code_comp[1]}]}
+        # OBX: valore
+        if len(obx_fields) > 3:
+            code_comp = obx_fields[3].split("^")
+            if len(code_comp) > 1:
+                self.code = {"coding": [{"code": code_comp[0], "display": code_comp[1]}]}
+        if len(obx_fields) > 5:
+            self.value = obx_fields[5]
+        if len(obx_fields) > 6:
+            self.unit = obx_fields[6]
+        if len(obx_fields) > 7:
+            self.referenceRange = obx_fields[7]
+        if len(obx_fields) > 14:
+            self.issued = obx_fields[14]
+
 class FSEDatabase:
     """Gestore database MongoDB per FSE"""
     
     def __init__(self, connection_string: str = "mongodb://localhost:27017/", db_name: str = "fse_database"):
-        self.client = MongoClient(connection_string)
+        self.client = MongoClient(connection_string, server_api=ServerApi('1'))
         self.db = self.client[db_name]
         self.patients_collection = self.db.patients
         self.lab_results_collection = self.db.lab_results
@@ -275,35 +300,28 @@ class FSEDatabase:
     def _create_indexes(self):
         """Crea indici per ottimizzare le query"""
         # Indice su codice fiscale
-        self.patients_collection.create_index([("identifier.value", 1)])
+        self.patients_collection.create_index([("identifier.value", 1)], unique=True)
         # Indice su ID paziente
-        self.patients_collection.create_index([("id", 1)])
+        self.patients_collection.create_index([("id", 1)], unique=True)
         # Indice su data di nascita
         self.patients_collection.create_index([("birthDate", 1)])
     
     def save_patient(self, patient: FHIRPatient) -> str:
         """Salva un paziente nel database"""
         try:
-            # Converte in dizionario
             patient_dict = self._fhir_to_dict(patient)
-            
-            # Verifica se il paziente esiste già
-            existing = self.find_patient_by_identifier(
-                patient_dict.get('identifier', [{}])[0].get('value', '')
-            )
-            
+            identifier_list = patient_dict.get('identifier', [])
+            identifier_value = identifier_list[0]['value'] if identifier_list else None
+            existing = self.find_patient_by_identifier(identifier_value) if identifier_value else None
             if existing:
-                # Aggiorna paziente esistente
                 self.patients_collection.update_one(
-                    {"id": existing["id"]},
+                    {"_id": existing["_id"]},
                     {"$set": patient_dict}
                 )
                 return existing["id"]
             else:
-                # Inserisce nuovo paziente
                 result = self.patients_collection.insert_one(patient_dict)
-                return str(result.inserted_id)
-                
+                return patient_dict["id"]
         except Exception as e:
             print(f"Errore nel salvare il paziente: {e}")
             return ""
@@ -337,6 +355,31 @@ class FSEDatabase:
             return result
         else:
             return fhir_object
+    
+    def save_lab_results(self, patient_id: str, obx_segments: List[List[str]], obr_segments: Optional[List[List[str]]] = None):
+        """Salva risultati OBX/OBR come Observation, evitando duplicati per paziente/codice/data"""
+        count = 0
+        obr_map = {i+1: obr for i, obr in enumerate(obr_segments)} if obr_segments else {}
+        for idx, obx in enumerate(obx_segments):
+            obr = obr_map.get(idx+1)
+            obs = FHIRObservation(patient_id, obx, obr)
+            obs_dict = obs.__dict__
+            obs_dict["subject"] = obs.subject
+            # Criterio di unicità: paziente, codice, data (issued)
+            code = obs.code["coding"][0]["code"] if obs.code and "coding" in obs.code and obs.code["coding"] else None
+            issued = obs.issued
+            # Evita duplicati
+            if code:
+                exists = self.lab_results_collection.find_one({
+                    "subject.reference": f"Patient/{patient_id}",
+                    "code.coding.code": code,
+                    "issued": issued
+                })
+                if exists:
+                    continue
+            self.lab_results_collection.insert_one(obs_dict)
+            count += 1
+        return count
 
 class FSEFramework:
     """Framework principale per gestione FSE"""
@@ -354,12 +397,18 @@ class FSEFramework:
             # Salva in database
             patient_id = self.database.save_patient(fhir_patient)
             
+            # Estrai segmenti OBX/OBR
+            parser = self.converter.parser
+            segments = parser.parse_message(hl7_message)
+            obx_segments = [parser.parse_segment(s) for s in segments.get('OBX',[])]
+            obr_segments = [parser.parse_segment(s) for s in segments.get('OBR',[])]
+            n_obs = self.database.save_lab_results(patient_id, obx_segments, obr_segments)
             return {
                 "success": True,
                 "patient_id": patient_id,
-                "message": "Paziente processato con successo"
+                "lab_results": n_obs,
+                "message": f"Paziente e {n_obs} risultati processati con successo"
             }
-            
         except Exception as e:
             return {
                 "success": False,
@@ -386,7 +435,7 @@ if __name__ == "__main__":
     fse_framework = FSEFramework()
     
     # Messaggio HL7 di esempio (dal tuo file)
-    hl7_sample = """MSH|^~\&|XXX|XXX|YYY|YYY|20250530154128||OUL^R22|1768820250530154128||2.5
+    hl7_sample = r"""MSH|^~\&|XXX|XXX|YYY|YYY|20250530154128||OUL^R22|1768820250530154128||2.5
 PID|||383378^^^CS^SS~46630100^^^ZZZ^ZZZ~630110^^^PI^BDA~CODICEFISCALE^^^CF^NN||COGNOME^NOME||19780319|F|||VIA DI RESIDENZA^^DESC.COMUNE^^CAP^^L^^COD.COMUNE~^^COD.COMUNE^^^^^^COD.COMUNE||RECAPITO TEL^PRN^PH^^^^^^^^RECAPITO TEL^y|||||CPDICEFISCALE|383378||||COD.COMUNE|||CITTADINANZA||||N|N"""
     
     # Processa messaggio

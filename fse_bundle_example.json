@@ -1,0 +1,110 @@
+{
+  "resourceType": "Bundle",
+  "id": "f8dec09c-b470-4e4a-9678-656860a40f68",
+  "type": "collection",
+  "timestamp": "2025-06-03T17:18:27.987854",
+  "entry": [
+    {
+      "fullUrl": "Patient/b46c2564-dc86-47a4-9824-ea57244c201e",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "b46c2564-dc86-47a4-9824-ea57244c201e",
+        "meta": {
+          "profile": [
+            "http://hl7.it/fhir/lab-report/StructureDefinition/patient-it-lab"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://hl7.it/sid/tessera-sanitaria",
+            "value": "12345"
+          },
+          {
+            "system": "http://sistema.locale/NN",
+            "value": "RSSMRA85M01H501Z"
+          }
+        ],
+        "name": [
+          {
+            "family": "ROSSI",
+            "given": [
+              "MARIO"
+            ]
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "0612345678"
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1985-08-01",
+        "address": [
+          {
+            "use": "home",
+            "line": [
+              "VIA ROMA 10"
+            ],
+            "city": "ROMA",
+            "postalCode": "00100",
+            "country": "IT"
+          }
+        ],
+        "contact": [],
+        "extension": []
+      }
+    },
+    {
+      "fullUrl": "Patient/0f9cfd58-0434-475a-8a75-f294133b9ad4",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0f9cfd58-0434-475a-8a75-f294133b9ad4",
+        "meta": {
+          "profile": [
+            "http://hl7.it/fhir/lab-report/StructureDefinition/patient-it-lab"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://hl7.it/sid/tessera-sanitaria",
+            "value": "67890"
+          },
+          {
+            "system": "http://sistema.locale/NN",
+            "value": "VRDGNN90A41F205S"
+          }
+        ],
+        "name": [
+          {
+            "family": "VERDI",
+            "given": [
+              "GIOVANNA"
+            ]
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "0114567890"
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1990-04-01",
+        "address": [
+          {
+            "use": "home",
+            "line": [
+              "VIA MILANO 25"
+            ],
+            "city": "TORINO",
+            "postalCode": "10100",
+            "country": "IT"
+          }
+        ],
+        "contact": [],
+        "extension": []
+      }
+    }
+  ]
+}

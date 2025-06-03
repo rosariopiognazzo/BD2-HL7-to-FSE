@@ -6,14 +6,23 @@ Include setup database, test unitari e esempi d'uso
 import json
 import unittest
 from datetime import datetime
-import os
-from pymongo import MongoClient
-import sys
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+from typing import List, Dict
+import uuid
+
+# Import FSE Framework components
+try:
+    from hl7_fhir_converter import FSEFramework, FHIRConverter, HL7Parser
+except ImportError:
+    print("FSE Framework non trovato. Impossibile eseguire i test.")
+    import sys
+    sys.exit(1)
 
 # Configurazione
 CONFIG = {
     "mongodb": {
-        "connection_string": "mongodb://localhost:27017/",
+        "connection_string": "mongodb+srv://rosariopiognazzo:MO22HSgdEdNdh2fF@cluster0.vim0kda.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
         "database_name": "fse_test_database",
         "collections": {
             "patients": "patients",
@@ -36,7 +45,7 @@ CONFIG = {
 def setup_database():
     """Setup iniziale del database MongoDB"""
     try:
-        client = MongoClient(CONFIG["mongodb"]["connection_string"])
+        client = MongoClient(CONFIG["mongodb"]["connection_string"], server_api=ServerApi('1'))
         db = client[CONFIG["mongodb"]["database_name"]]
         
         # Crea collezioni se non esistono
@@ -69,19 +78,16 @@ class TestFSEFramework(unittest.TestCase):
     
     @classmethod
     def setUpClass(cls):
-        """Setup per tutti i test"""
-        # Importa il framework (assumendo sia nello stesso directory)
-        try:
-            from hl7_fhir_converter import FSEFramework, FHIRConverter, HL7Parser
-            cls.framework = FSEFramework("mongodb://localhost:27017/")
-            cls.converter = FHIRConverter()
-            cls.parser = HL7Parser()
-        except ImportError:
-            cls.skipTest("Framework non trovato")
+        cls.framework = FSEFramework(CONFIG["mongodb"]["connection_string"])
+        cls.converter = FHIRConverter()
+        cls.parser = HL7Parser()
+        # Pulisci le collezioni di test
+        db = cls.framework.database.db
+        db.patients.delete_many({})
+        db.lab_results.delete_many({})
     
     def setUp(self):
-        """Setup per ogni test"""
-        self.sample_hl7 = """MSH|^~\&|XXX|XXX|YYY|YYY|20250530154128||OUL^R22|1768820250530154128||2.5
+        self.sample_hl7 = r"""MSH|^~\&|XXX|XXX|YYY|YYY|20250530154128||OUL^R22|1768820250530154128||2.5
 PID|||383378^^^CS^SS~46630100^^^ZZZ^ZZZ~630110^^^PI^BDA~RSSMRA71E01F205E^^^CF^NN||ROSSI^MARIA||19710501|F|||VIA DELLA LIBERTA 52^^MILANO^^20100^^IT||3331245678^PRN^PH|||||RSSMRA71E01F205E|383378||||MILANO|||ITALIANA||||N|N
 SPM|1|312713635143||SI^Siero|||||||||||||20250530150000
 OBR|1||3127136351^DN^1-3127136351-20250530150000|0017^POTASSIO^V^0017@1^^DN|||20250530150000||||G|||||||||||||ZZZ-1|I||^^^20250530150000
@@ -110,11 +116,11 @@ OBX|1|CE|0017^POTASSIO^V^0017@1^^DN||3.9|mmol/L|3.5 - 5.3|N|||I|||20250530153700
         # Test inserimento
         patient = self.converter.convert_hl7_to_fhir(self.sample_hl7)
         patient_id = self.framework.database.save_patient(patient)
-        self.assertIsNotNone(patient_id)
+        self.assertIsNotNone(patient_id, "Salvataggio paziente fallito")
         
         # Test ricerca
         found_patient = self.framework.database.find_patient_by_id(patient.id)
-        self.assertIsNotNone(found_patient)
+        self.assertIsNotNone(found_patient, f"Paziente con id {patient.id} non trovato nel database")
         
     def test_complete_workflow(self):
         """Test workflow completo"""
@@ -127,28 +133,27 @@ def create_sample_data():
     """Crea dati di esempio per test"""
     samples = [
         {
-            "hl7_message": """MSH|^~\&|LAB|OSPEDALE1|FSE|REGIONE|20250601120000||OUL^R22|MSG001||2.5
+            "hl7_message": r"""MSH|^~\&|LAB|OSPEDALE1|FSE|REGIONE|20250601120000||OUL^R22|MSG001||2.5
 PID|||12345^^^CS^SS~RSSMRA85M01H501Z^^^CF^NN||ROSSI^MARIO||19850801|M|||VIA ROMA 10^^ROMA^^00100^^IT||0612345678^PRN^PH|||||RSSMRA85M01H501Z||||||||||||
 OBR|1||LAB001|CBC^EMOCROMO COMPLETO|||20250601100000||||||||||||||||F||^^^20250601100000
 OBX|1|NM|WBC^LEUCOCITI||7.2|10*3/uL|4.0-11.0|N|||F|||20250601110000||""",
             "description": "Paziente maschio con emocromo"
         },
         {
-            "hl7_message": """MSH|^~\&|LAB|OSPEDALE2|FSE|REGIONE|20250601130000||OUL^R22|MSG002||2.5
+            "hl7_message": r"""MSH|^~\&|LAB|OSPEDALE2|FSE|REGIONE|20250601130000||OUL^R22|MSG002||2.5
 PID|||67890^^^CS^SS~VRDGNN90A41F205S^^^CF^NN||VERDI^GIOVANNA||19900401|F|||VIA MILANO 25^^TORINO^^10100^^IT||0114567890^PRN^PH|||||VRDGNN90A41F205S||||||||||||
 OBR|1||LAB002|GLUC^GLICEMIA|||20250601110000||||||||||||||||F||^^^20250601110000
 OBX|1|NM|GLUC^GLUCOSIO||95|mg/dL|70-110|N|||F|||20250601120000||""",
             "description": "Paziente femmina con glicemia"
         }
     ]
-    
     return samples
 
 def run_performance_test():
     """Test performance con molti messaggi"""
     from time import time
     
-    framework = FSEFramework()
+    framework = FSEFramework(CONFIG["mongodb"]["connection_string"])
     samples = create_sample_data()
     
     # Test con 100 messaggi
@@ -175,7 +180,7 @@ def generate_fhir_bundle(patient_ids: List[str]) -> Dict:
         "entry": []
     }
     
-    framework = FSEFramework()
+    framework = FSEFramework(CONFIG["mongodb"]["connection_string"])
     
     for patient_id in patient_ids:
         patient = framework.database.find_patient_by_id(patient_id)
@@ -214,7 +219,7 @@ def main():
     
     # Crea dati di esempio
     print("\n=== Creazione dati di esempio ===")
-    framework = FSEFramework()
+    framework = FSEFramework(CONFIG["mongodb"]["connection_string"])
     samples = create_sample_data()
     patient_ids = []
     

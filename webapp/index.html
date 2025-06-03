@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>FSE WebApp JS</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-4">
+    <h1>Gestione Pazienti FSE (JS)</h1>
+    <div class="mb-3">
+        <input type="text" id="searchInput" class="form-control" placeholder="Cerca per CF, nome o cognome">
+    </div>
+    <button class="btn btn-primary mb-3" onclick="showInsertForm()">Inserisci HL7</button>
+    <div id="alertBox"></div>
+    <div id="insertForm" style="display:none;">
+        <h4>Inserisci Messaggio HL7</h4>
+        <textarea id="hl7Input" class="form-control mb-2" rows="6"></textarea>
+        <button class="btn btn-success" onclick="submitHL7()">Processa e Salva</button>
+        <button class="btn btn-secondary" onclick="hideInsertForm()">Annulla</button>
+    </div>
+    <div id="patientsTable"></div>
+    <div id="patientDetail"></div>
+</div>
+<script src="static/app.js"></script>
+</body>
+</html>
