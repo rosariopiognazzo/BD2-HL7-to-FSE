@@ -269,20 +269,20 @@ class FHIRObservation:
         # OBR: info esame
         if obr_fields and len(obr_fields) > 4:
             code_comp = obr_fields[4].split("^")
-            if len(code_comp) > 1:
+            if len(code_comp) > 1 and code_comp[0] and code_comp[1]:
                 self.code = {"coding": [{"code": code_comp[0], "display": code_comp[1]}]}
         # OBX: valore
-        if len(obx_fields) > 3:
+        if obx_fields and len(obx_fields) > 3:
             code_comp = obx_fields[3].split("^")
-            if len(code_comp) > 1:
+            if len(code_comp) > 1 and code_comp[0] and code_comp[1]:
                 self.code = {"coding": [{"code": code_comp[0], "display": code_comp[1]}]}
-        if len(obx_fields) > 5:
+        if obx_fields and len(obx_fields) > 5 and obx_fields[5]:
             self.value = obx_fields[5]
-        if len(obx_fields) > 6:
+        if obx_fields and len(obx_fields) > 6 and obx_fields[6]:
             self.unit = obx_fields[6]
-        if len(obx_fields) > 7:
+        if obx_fields and len(obx_fields) > 7 and obx_fields[7]:
             self.referenceRange = obx_fields[7]
-        if len(obx_fields) > 14:
+        if obx_fields and len(obx_fields) > 14 and obx_fields[14]:
             self.issued = obx_fields[14]
 
 class FSEDatabase:
@@ -380,6 +380,20 @@ class FSEDatabase:
             self.lab_results_collection.insert_one(obs_dict)
             count += 1
         return count
+    
+    def fix_lab_results_references(self):
+        """Fix per aggiornare i lab_results con subject.reference vuoto usando l'id del paziente."""
+        num_patients = self.patients_collection.count_documents({})
+        if num_patients == 1:
+            patient = self.patients_collection.find_one({})
+            patient_id = patient["id"]
+            result = self.lab_results_collection.update_many(
+                {"subject.reference": "Patient/"},
+                {"$set": {"subject.reference": f"Patient/{patient_id}"}}
+            )
+            print(f"Aggiornati {result.modified_count} lab_results con Patient/{patient_id}")
+        else:
+            print("Fix automatico non sicuro: ci sono più pazienti nel database. Serve una logica di matching più raffinata.")
 
 class FSEFramework:
     """Framework principale per gestione FSE"""
