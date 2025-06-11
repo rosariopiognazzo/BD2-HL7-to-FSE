@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebApp - Gestione Pazienti</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="alertBox"></div>
+    <h1>Gestione Pazienti</h1>
+    <button onclick="showInsertForm()">Inserisci Paziente</button>
+    <div id="insertForm" style="display:none;">
+        <textarea id="hl7Input" placeholder="Inserisci messaggio HL7"></textarea>
+        <button onclick="submitHL7()">Invia</button>
+        <button onclick="hideInsertForm()">Annulla</button>
+    </div>
+    <input type="text" id="searchInput" placeholder="Cerca pazienti" oninput="loadPatients(this.value)">
+    <ul id="patientsList"></ul>
+    <script src="/static/app.js"></script>
+</body>
+</html>

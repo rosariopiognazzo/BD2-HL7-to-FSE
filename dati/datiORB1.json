@@ -1,0 +1,148 @@
+{
+    "_id": "96a084d8-18fc-4d38-8258-bd6936efe699",
+    "messageType": "MDM^T01^MDM_T01",
+    "timestamp": "20250530153555",
+    "sendingApplication": "XXX",
+    "receivingApplication": "YYY",
+    "segments": [
+        {
+            "type": "MSH",
+            "fields": [
+                "MSH",
+                "^~\\&",
+                "XXX",
+                "XXX",
+                "YYY",
+                "YYY",
+                "20250530153555",
+                "",
+                "MDM^T01^MDM_T01",
+                "96a084d8-18fc-4d38-8258-bd6936efe699",
+                "P",
+                "2.5",
+                "",
+                "20250530153555",
+                "",
+                "",
+                "1721260^^^PK^PI~CODICEFISCALE^^^CF^NNITA",
+                "",
+                "COGNOME^NOME^^^^^L",
+                "",
+                "19331008",
+                "F",
+                "",
+                "",
+                "VIA DI RESIDENZA^^DECS. COMUNE^^CAP^^L~^^DESC. COMUNE^^COD.COMUNE^CITTADINANZA^BDL",
+                "",
+                "I",
+                "COD.REPARTO^^^^^^^^DESC. REPARTO",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "NOSOLOGICO^^^identificativo referto",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "V",
+                "1",
+                "ZZZ",
+                "application",
+                "",
+                "",
+                "20250530132243",
+                "",
+                "",
+                "COD.FISCALEMEDICO^NOMINATIVO MEDICO^^^^^^^^^^^CF",
+                "",
+                "",
+                "2.16.840.1.113883.2.9.2.70.4.4\\S\\103.200310291948",
+                "",
+                "CPOE279695",
+                "",
+                "",
+                "LA",
+                "N",
+                "",
+                "",
+                "OR",
+                "",
+                "",
+                "2.22.222.2.222222.2.2.2.22222.2.2.2.2"
+            ]
+        },
+        {
+            "type": "EVN",
+            "fields": [
+                "EVN"
+            ]
+        },
+        {
+            "type": "PID",
+            "fields": [
+                "PID"
+            ]
+        },
+        {
+            "type": "PV1",
+            "fields": [
+                "PV1"
+            ]
+        },
+        {
+            "type": "TXA",
+            "fields": [
+                "TXA"
+            ]
+        },
+        {
+            "type": "",
+            "fields": [
+                ""
+            ]
+        }
+    ],
+    "metadata": {
+        "parsedAt": "2025-06-11T17:37:33.023874",
+        "warnings": []
+    }
+}

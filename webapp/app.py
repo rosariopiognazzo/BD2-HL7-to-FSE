@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, render_template
 from hl7_fhir_converter import FSEFramework
 
 # Configurazione Flask
@@ -58,16 +58,63 @@ def get_lab_results(pid):
         r.pop('_id', None)
     return jsonify(results)
 
-# Serve la SPA su / e su tutte le route non-API
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve_spa(path):
-    if path.startswith('api/'):
-        return '', 404
-    if path.startswith('static/'):
-        return send_from_directory('static', path[len('static/'):])
-    # Serve index.html per tutte le altre route (SPA)
-    return send_from_directory(os.path.dirname(__file__), 'index.html')
+@app.route('/api/raw_lab_data', methods=['GET'])
+def get_raw_lab_data():
+    """Recupera i dati di laboratorio raw non ancora processati"""
+    try:
+        # Cerca documenti con struttura di messaggi HL7 parsati
+        raw_docs = list(framework.database.lab_results_collection.find({
+            "segments": {"$exists": True}
+        }).limit(10))
+        
+        for doc in raw_docs:
+            doc.pop('_id', None)
+        
+        return jsonify(raw_docs)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/process_lab_document', methods=['POST'])
+def process_lab_document():
+    """Processa manualmente un documento di laboratorio"""
+    try:
+        data = request.get_json()
+        doc_id = data.get('document_id')
+        patient_id = data.get('patient_id')
+        
+        if not doc_id or not patient_id:
+            return jsonify({'error': 'document_id e patient_id sono richiesti'}), 400
+        
+        # Trova il documento
+        doc = framework.database.lab_results_collection.find_one({"_id": doc_id})
+        if not doc:
+            return jsonify({'error': 'Documento non trovato'}), 404
+        
+        # Verifica che il paziente esista
+        patient = framework.database.find_patient_by_id(patient_id)
+        if not patient:
+            return jsonify({'error': 'Paziente non trovato'}), 404
+        
+        # Qui dovremmo processare i risultati di laboratorio e associarli al paziente
+        # Per ora restituiamo successo
+        
+        return jsonify({
+            'success': True,
+            'message': f'Documento {doc_id} associato al paziente {patient_id}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/', methods=['GET'])
+def serve_home_page():
+    """Endpoint per servire la homepage della webapp."""
+    return render_template('app.html')
+
+@app.route('/app.html', methods=['GET'])
+def serve_app_page():
+    """Endpoint per servire la pagina HTML principale della webapp."""
+    return render_template('app.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

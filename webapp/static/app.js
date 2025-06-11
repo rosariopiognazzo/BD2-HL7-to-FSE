@@ -116,10 +116,75 @@ function deletePatient(pid) {
         });
 }
 
+function loadRawLabData() {
+    fetch('/api/raw_lab_data')
+        .then(r => r.json())
+        .then(data => {
+            renderRawLabData(data);
+        })
+        .catch(err => {
+            showAlert('Errore nel caricare dati laboratorio: ' + err.message, 'danger');
+        });
+}
+
+function renderRawLabData(data) {
+    const div = document.getElementById('rawLabData');
+    if (!data.length) {
+        div.innerHTML = '<p>Nessun dato di laboratorio raw trovato.</p>';
+        return;
+    }
+    
+    let html = `<h4>Dati Laboratorio Non Processati</h4>`;
+    html += `<table class="table table-bordered table-hover"><thead><tr><th>ID Messaggio</th><th>Timestamp</th><th>Tipo</th><th>Azioni</th></tr></thead><tbody>`;
+    
+    for (const item of data) {
+        html += `<tr>
+            <td>${item._id || 'N/A'}</td>
+            <td>${item.timestamp || 'N/A'}</td>
+            <td>${item.messageType || 'N/A'}</td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="showLabDetail('${item._id}')">Dettagli</button>
+                <button class="btn btn-sm btn-success" onclick="showAssignLabToPatient('${item._id}')">Assegna a Paziente</button>
+            </td>
+        </tr>`;
+    }
+    html += '</tbody></table>';
+    div.innerHTML = html;
+}
+
+function showLabDetail(labId) {
+    // Mostra i dettagli del documento di laboratorio
+    showAlert('Funzionalità dettagli laboratorio da implementare', 'info');
+}
+
+function showAssignLabToPatient(labId) {
+    const patientId = prompt('Inserisci ID del paziente a cui assegnare questi risultati:');
+    if (patientId) {
+        fetch('/api/process_lab_document', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                document_id: labId, 
+                patient_id: patientId 
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                loadRawLabData(); // Ricarica i dati
+            } else {
+                showAlert('Errore: ' + data.error, 'danger');
+            }
+        });
+    }
+}
+
 document.getElementById('searchInput').addEventListener('input', function() {
     loadPatients(this.value);
 });
 
 window.onload = function() {
     loadPatients();
+    loadRawLabData();
 };

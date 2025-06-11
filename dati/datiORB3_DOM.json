@@ -1,0 +1,297 @@
+{
+    "_id": "BIONET PM",
+    "messageType": "ORU^R01^ORU_R01",
+    "timestamp": "20250530180220",
+    "sendingApplication": "^BM5LP",
+    "receivingApplication": "",
+    "segments": [
+        {
+            "type": "MSH",
+            "fields": [
+                "MSH",
+                "^~\\&",
+                "^BM5LP",
+                "",
+                "",
+                "",
+                "20250530180220",
+                "",
+                "ORU^R01^ORU_R01",
+                "BIONET PM",
+                "P",
+                "2.4",
+                "",
+                "",
+                "ttttt",
+                "",
+                "",
+                "",
+                "18990101",
+                "M",
+                "",
+                "PRIMIS_BM5_PRO",
+                "^^1",
+                "NW",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "20250530180220",
+                "20250530180220",
+                "",
+                "TX",
+                "HR",
+                "",
+                "",
+                "BPM",
+                "50-150",
+                "F",
+                "",
+                "TX",
+                "ST",
+                "",
+                "",
+                "MV",
+                "-0.40-0.40",
+                "F",
+                "",
+                "TX",
+                "PVC",
+                "",
+                "",
+                "",
+                "0-20",
+                "F",
+                "",
+                "TX",
+                "SpO2-%",
+                "",
+                "98",
+                "%",
+                "90-100",
+                "F",
+                "",
+                "TX",
+                "SpO2-R",
+                "",
+                "75",
+                "BPM",
+                "50-150",
+                "F",
+                "",
+                "TX",
+                "PI",
+                "",
+                "11.41",
+                "",
+                "",
+                "F",
+                "",
+                "TX",
+                "RR",
+                "",
+                "",
+                "RPM",
+                "10-30",
+                "F",
+                "",
+                "TX",
+                "APNEA",
+                "",
+                "",
+                "",
+                "0-100",
+                "F",
+                "",
+                "TX",
+                "TEMP1",
+                "",
+                "",
+                "C",
+                "34.0-39.0",
+                "F",
+                "",
+                "TX",
+                "TEMP2",
+                "",
+                "",
+                "C",
+                "34.0-39.0",
+                "F",
+                "",
+                "TX",
+                "TEMP-DT",
+                "",
+                "",
+                "C",
+                "0.0-2.0",
+                "F",
+                "",
+                "TX",
+                "IBP1-S",
+                "",
+                "",
+                "MMHG",
+                "70-150",
+                "F",
+                "",
+                "TX",
+                "IBP1-M",
+                "",
+                "",
+                "MMHG",
+                "50-115",
+                "F",
+                "",
+                "TX",
+                "IBP1-D",
+                "",
+                "",
+                "MMHG",
+                "40-100",
+                "F",
+                "",
+                "TX",
+                "IBP1-PR",
+                "",
+                "",
+                "BPM",
+                "50-150",
+                "F",
+                "",
+                "TX",
+                "IBP2-M",
+                "",
+                "",
+                "MMHG",
+                "3-15",
+                "F"
+            ]
+        },
+        {
+            "type": "PID",
+            "fields": [
+                "PID"
+            ]
+        },
+        {
+            "type": "PV1",
+            "fields": [
+                "PV1"
+            ]
+        },
+        {
+            "type": "ORC",
+            "fields": [
+                "ORC"
+            ]
+        },
+        {
+            "type": "OBR",
+            "fields": [
+                "OBR"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        },
+        {
+            "type": "OBX",
+            "fields": [
+                "OBX"
+            ]
+        }
+    ],
+    "metadata": {
+        "parsedAt": "2025-06-11T17:37:33.023874",
+        "warnings": []
+    }
+}
