@@ -68,7 +68,10 @@ def get_raw_lab_data():
         }).limit(10))
         
         for doc in raw_docs:
-            doc.pop('_id', None)
+            # Mantieni l'ID nel suo formato originale, convertendo solo ObjectId in stringa
+            if hasattr(doc['_id'], 'binary'):  # È un ObjectId
+                doc['_id'] = str(doc['_id'])
+            # Se è già stringa o intero, lascialo così com'è
         
         return jsonify(raw_docs)
     except Exception as e:
@@ -105,6 +108,136 @@ def process_lab_document():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/raw_lab_data/<doc_id>', methods=['GET'])
+def get_raw_lab_detail(doc_id):
+    """Recupera i dettagli di un singolo documento di laboratorio"""
+    try:
+        from bson import ObjectId
+        
+        # Prova diversi formati di ID
+        doc = None
+        
+        # 1. Prova con stringa diretta
+        doc = framework.database.lab_results_collection.find_one({"_id": doc_id})
+        
+        # 2. Se non trovato, prova con ObjectId
+        if not doc:
+            try:
+                doc = framework.database.lab_results_collection.find_one({"_id": ObjectId(doc_id)})
+            except:
+                pass
+        
+        # 3. Se ancora non trovato, prova come intero
+        if not doc:
+            try:
+                doc = framework.database.lab_results_collection.find_one({"_id": int(doc_id)})
+            except:
+                pass
+        
+        if not doc:
+            return jsonify({'error': f'Documento con ID {doc_id} non trovato'}), 404
+        
+        # Estrai i dettagli dal documento
+        details = extract_lab_details_from_document(doc)
+        
+        return jsonify(details)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def extract_lab_details_from_document(doc):
+    """Estrae i dettagli dei test di laboratorio dal documento parsato"""
+    details = {
+        'document_id': str(doc.get('_id', '')),
+        'timestamp': doc.get('timestamp', ''),
+        'message_type': doc.get('messageType', ''),
+        'sending_application': doc.get('sendingApplication', ''),
+        'receiving_application': doc.get('receivingApplication', ''),
+        'patient_info': {},
+        'lab_results': []
+    }
+    
+    try:
+        # Estrai informazioni dal primo segmento MSH che contiene tutti i dati
+        segments = doc.get('segments', [])
+        msh_segment = None
+        
+        for segment in segments:
+            if segment.get('type') == 'MSH' and len(segment.get('fields', [])) > 1:
+                msh_segment = segment
+                break
+        
+        if msh_segment and len(msh_segment.get('fields', [])) > 20:
+            fields = msh_segment.get('fields', [])
+            
+            # Estrai informazioni paziente
+            if len(fields) > 14:
+                details['patient_info'] = {
+                    'identifiers': fields[14] if len(fields) > 14 else '',
+                    'name': fields[16] if len(fields) > 16 else '',
+                    'birth_date': fields[18] if len(fields) > 18 else '',
+                    'gender': fields[19] if len(fields) > 19 else '',
+                    'address': fields[20] if len(fields) > 20 else '',
+                    'phone': fields[22] if len(fields) > 22 else ''
+                }
+            
+            # Estrai risultati di laboratorio
+            lab_results = []
+            
+            # Cerca pattern per i risultati (basandoci sulla struttura osservata)
+            i = 0
+            while i < len(fields):
+                field = fields[i]
+                
+                # Cerca pattern di test di laboratorio con codice^nome^V^codice2
+                if isinstance(field, str) and '^' in field and ('POTASSIO' in field.upper() or 'SODIO' in field.upper() or 'EMOLISI' in field.upper() or 'ITTERO' in field.upper() or 'LIPEMIA' in field.upper()):
+                    parts = field.split('^')
+                    if len(parts) >= 2:
+                        test_code = parts[0]
+                        test_name = parts[1]
+                        
+                        # Cerca il valore nei campi successivi
+                        value = None
+                        unit = None
+                        reference_range = None
+                        
+                        # Guarda i prossimi campi per valore, unità e range
+                        for j in range(i + 1, min(i + 10, len(fields))):
+                            next_field = fields[j]
+                            
+                            # Se troviamo un numero seguito da unità
+                            if isinstance(next_field, str) and next_field.replace('.', '').replace('-', '').isdigit():
+                                value = next_field
+                                
+                                # Controlla se il campo successivo è l'unità
+                                if j + 1 < len(fields) and isinstance(fields[j + 1], str) and ('mmol/L' in fields[j + 1] or 'mg/dL' in fields[j + 1] or 'g/L' in fields[j + 1]):
+                                    unit = fields[j + 1]
+                                
+                                # Controlla se c'è un range di riferimento
+                                if j + 2 < len(fields) and isinstance(fields[j + 2], str) and (' - ' in fields[j + 2] or '>' in fields[j + 2] or '<' in fields[j + 2]):
+                                    reference_range = fields[j + 2]
+                                
+                                break
+                        
+                        lab_result = {
+                            'test_code': test_code,
+                            'test_name': test_name,
+                            'value': value,
+                            'unit': unit,
+                            'reference_range': reference_range,
+                            'status': 'final'
+                        }
+                        
+                        lab_results.append(lab_result)
+                
+                i += 1
+            
+            details['lab_results'] = lab_results
+            
+    except Exception as e:
+        print(f"Errore nell'estrazione dettagli: {e}")
+    
+    return details
 
 @app.route('/', methods=['GET'])
 def serve_home_page():

@@ -153,8 +153,165 @@ function renderRawLabData(data) {
 }
 
 function showLabDetail(labId) {
-    // Mostra i dettagli del documento di laboratorio
-    showAlert('Funzionalità dettagli laboratorio da implementare', 'info');
+    fetch(`/api/raw_lab_data/${labId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                showAlert('Errore: ' + data.error, 'danger');
+                return;
+            }
+            renderLabDetail(data);
+        })
+        .catch(err => {
+            showAlert('Errore nel caricare dettagli: ' + err.message, 'danger');
+        });
+}
+
+function renderLabDetail(labData) {
+    const detailDiv = document.getElementById('labDetail');
+    
+    let html = `
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5>Dettagli Documento Laboratorio</h5>
+                <button class="btn btn-sm btn-secondary float-end" onclick="hideLabDetail()">Chiudi</button>
+            </div>
+            <div class="card-body">
+                <!-- Informazioni Documento -->
+                <h6>Informazioni Documento</h6>
+                <table class="table table-sm table-bordered">
+                    <tr><th>ID Documento</th><td>${labData.document_id}</td></tr>
+                    <tr><th>Timestamp</th><td>${labData.timestamp}</td></tr>
+                    <tr><th>Tipo Messaggio</th><td>${labData.message_type}</td></tr>
+                    <tr><th>Applicazione Mittente</th><td>${labData.sending_application}</td></tr>
+                    <tr><th>Applicazione Destinatario</th><td>${labData.receiving_application}</td></tr>
+                </table>
+                
+                <!-- Informazioni Paziente -->
+                <h6 class="mt-3">Informazioni Paziente</h6>
+                <table class="table table-sm table-bordered">
+                    <tr><th>Identificatori</th><td>${labData.patient_info.identifiers || 'N/A'}</td></tr>
+                    <tr><th>Nome</th><td>${labData.patient_info.name || 'N/A'}</td></tr>
+                    <tr><th>Data Nascita</th><td>${labData.patient_info.birth_date || 'N/A'}</td></tr>
+                    <tr><th>Sesso</th><td>${labData.patient_info.gender || 'N/A'}</td></tr>
+                    <tr><th>Indirizzo</th><td>${labData.patient_info.address || 'N/A'}</td></tr>
+                    <tr><th>Telefono</th><td>${labData.patient_info.phone || 'N/A'}</td></tr>
+                </table>
+                
+                <!-- Risultati Laboratorio -->
+                <h6 class="mt-3">Risultati di Laboratorio</h6>`;
+    
+    if (labData.lab_results && labData.lab_results.length > 0) {
+        html += `
+                <table class="table table-sm table-bordered table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Codice Test</th>
+                            <th>Nome Test</th>
+                            <th>Valore</th>
+                            <th>Unità</th>
+                            <th>Range Riferimento</th>
+                            <th>Stato</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        
+        for (const result of labData.lab_results) {
+            // Determina il colore della riga in base al valore e range
+            let rowClass = '';
+            if (result.value && result.reference_range) {
+                const isNormal = checkIfValueInRange(result.value, result.reference_range);
+                rowClass = isNormal ? 'table-success' : 'table-warning';
+            }
+            
+            html += `
+                        <tr class="${rowClass}">
+                            <td><code>${result.test_code || 'N/A'}</code></td>
+                            <td><strong>${result.test_name || 'N/A'}</strong></td>
+                            <td>${result.value || 'N/A'}</td>
+                            <td>${result.unit || 'N/A'}</td>
+                            <td>${result.reference_range || 'N/A'}</td>
+                            <td><span class="badge bg-primary">${result.status || 'N/A'}</span></td>
+                        </tr>`;
+        }
+        
+        html += `
+                    </tbody>
+                </table>`;
+    } else {
+        html += `<p class="text-muted">Nessun risultato di laboratorio trovato in questo documento.</p>`;
+    }
+    
+    html += `
+                <div class="mt-3">
+                    <button class="btn btn-success" onclick="showAssignLabToPatient('${labData.document_id}')">
+                        Assegna a Paziente
+                    </button>
+                    <button class="btn btn-info" onclick="downloadLabData('${labData.document_id}')">
+                        Scarica JSON
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    
+    detailDiv.innerHTML = html;
+    detailDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+function hideLabDetail() {
+    document.getElementById('labDetail').innerHTML = '';
+}
+
+function checkIfValueInRange(value, range) {
+    try {
+        if (!value || !range || typeof range !== 'string') return true;
+        
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) return true;
+        
+        // Gestisci range tipo "3.5 - 5.3"
+        if (range.includes(' - ')) {
+            const [min, max] = range.split(' - ').map(x => parseFloat(x.trim()));
+            if (!isNaN(min) && !isNaN(max)) {
+                return numValue >= min && numValue <= max;
+            }
+        }
+        
+        // Gestisci range tipo "> 3.0" o "< 10.0"
+        if (range.startsWith('>')) {
+            const minValue = parseFloat(range.substring(1).trim());
+            return !isNaN(minValue) && numValue > minValue;
+        }
+        
+        if (range.startsWith('<')) {
+            const maxValue = parseFloat(range.substring(1).trim());
+            return !isNaN(maxValue) && numValue < maxValue;
+        }
+        
+        return true; // Se non riusciamo a parsare, assumiamo normale
+    } catch (e) {
+        return true;
+    }
+}
+
+function downloadLabData(labId) {
+    fetch(`/api/raw_lab_data/${labId}`)
+        .then(r => r.json())
+        .then(data => {
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `lab_data_${labId}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        })
+        .catch(err => {
+            showAlert('Errore nel download: ' + err.message, 'danger');
+        });
 }
 
 function showAssignLabToPatient(labId) {
